@@ -10,17 +10,22 @@ import UIKit
 import RealmSwift
 import UserNotifications
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var searchBar: UISearchBar!
     
   
     // Realmインスタンスを取得する
     let realm = try! Realm()
     
+    
+    
     // DB内のタスクが格納されるリスト。
     // 日付近い順\順でソート：降順
     // 以降内容をアップデートするとリスト内は自動的に更新される。
     let taskArray = try! Realm().objects(Task.self).sorted(byProperty: "date", ascending: false)
+    
+    var searchTaskArray = [Task]()
 
 
     override func viewDidLoad() {
@@ -29,6 +34,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         tableView.delegate = self
         tableView.dataSource = self
+        
+        searchBar.delegate = self
     }
     
     override func didReceiveMemoryWarning() {
@@ -41,7 +48,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // MARK: UITableViewDataSourceプロトコルのメソッド
     // データの数（＝セルの数）を返すメソッド
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return taskArray.count  // ←追加する
+        if(searchBar.text == ""){
+            return taskArray.count
+        }else{
+            return searchTaskArray.count
+        }
     }
     
     // 各セルの内容を返すメソッド
@@ -49,16 +60,26 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         // 再利用可能な cell を得る
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath as IndexPath)
         
-        // Cellに値を設定する.
-        let task = taskArray[indexPath.row]
-        cell.textLabel?.text = task.title
-        
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        
-        let dateString:String = formatter.string(from: task.date as Date)
-        cell.detailTextLabel?.text = dateString
-        
+        if(searchBar.text == ""){
+            //通常時
+            let task = taskArray[indexPath.row]
+            cell.textLabel?.text = task.title + "[" + task.category + "]"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+            
+            let dateString:String = formatter.string(from: task.date as Date)
+            cell.detailTextLabel?.text = dateString
+            //検索時
+        }else{
+            cell.textLabel?.text = searchTaskArray[indexPath.row].title + "[" + searchTaskArray[indexPath.row].category + "]"
+            
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+           
+            let dateString:String = formatter.string(from: searchTaskArray[indexPath.row].date as Date)
+            cell.detailTextLabel?.text = dateString
+        }
+    
         return cell
     }
     
@@ -128,4 +149,34 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         super.viewWillAppear(animated)
         tableView.reloadData()
     }
+    
+    //検索ボタンが押された時に呼ばれる
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        self.view.endEditing(true) // 編集終了
+        searchBar.showsCancelButton = true // サーチバーのキャンセルボタン表示
+       // purasuButton.isEnabled = false // タスク追加ボタン無効
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        let result = realm.objects(Task.self).filter("category ='\(searchBar.text!)'")
+        for data in result{
+            searchTaskArray.append(data)
+        }
+        self.tableView.reloadData()
+    }
+    
+    //キャンセルボタンが押された時に呼ばれる
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.showsCancelButton = false // キャンセルボタンを隠す
+     //   purasuButton.isEnabled = true // タスク追加ボタンの有効化
+        self.view.endEditing(true) // 編集終了
+        searchBar.text = ""
+        self.tableView.reloadData()
+    }
+    
+    //テキストフィールド入力開始前に呼ばれる
+    func searchBarShouldBeginEditing(_ searchBar: UISearchBar) -> Bool {
+        searchBar.showsCancelButton = true
+        return true
+    }
+ 
 }
