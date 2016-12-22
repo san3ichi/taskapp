@@ -152,12 +152,16 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     //検索ボタンが押された時に呼ばれる
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
         self.view.endEditing(true) // 編集終了
         searchBar.showsCancelButton = true // サーチバーのキャンセルボタン表示
        // purasuButton.isEnabled = false // タスク追加ボタン無効
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
         let result = realm.objects(Task.self).filter("category ='\(searchBar.text!)'")
+        
+        searchTaskArray.removeAll()
+        
         for data in result{
             searchTaskArray.append(data)
         }
